@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+public/images/dishes/*.jpeg
+public/images/dishes/*.png
+public/images/dishes/*.jpg
