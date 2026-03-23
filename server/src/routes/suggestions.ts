@@ -3,7 +3,6 @@ import { db } from '../db/database';
 import axios from 'axios';
 
 const router = Router();
-const API_KEY = process.env.GEMINI_API_KEY;
 
 // Basic filter logic suggestion (fallback or fast option)
 router.get('/filter', (req, res) => {
@@ -78,6 +77,7 @@ router.post('/ai', async (req, res) => {
             return res.json([]);
         }
 
+        const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
             return res.status(500).json({ error: 'AI service not configured' });
         }

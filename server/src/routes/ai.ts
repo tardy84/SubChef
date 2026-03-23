@@ -6,8 +6,6 @@ import { db } from '../db/database';
 
 const router = express.Router();
 
-const API_KEY = process.env.GEMINI_API_KEY;
-
 router.post('/generate-image', async (req, res) => {
     try {
         const { prompt, recipeId } = req.body;
@@ -16,6 +14,7 @@ router.post('/generate-image', async (req, res) => {
             return res.status(400).json({ error: 'Prompt and recipeId are required' });
         }
 
+        const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
             return res.status(500).json({ error: 'AI service not configured' });
         }

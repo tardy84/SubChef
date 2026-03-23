@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { db } from './db/database';
 
 import recipesRouter from './routes/recipes';
@@ -8,8 +10,6 @@ import ingredientsRouter from './routes/ingredients';
 import suggestionsRouter from './routes/suggestions';
 import shoppingRouter from './routes/shopping';
 import aiRouter from './routes/ai';
-
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3001;
