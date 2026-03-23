@@ -11,7 +11,15 @@ router.post('/generate', (req, res) => {
             return res.json({});
         }
 
-        const placeholders = recipeIds.map(() => '?').join(',');
+        const validIds = recipeIds
+            .map((id: any) => parseInt(id, 10))
+            .filter((id: number) => !isNaN(id) && id > 0);
+
+        if (validIds.length === 0) {
+            return res.status(400).json({ error: 'Invalid recipe IDs' });
+        }
+
+        const placeholders = validIds.map(() => '?').join(',');
         
         // Aggregate ingredient quantities
         const query = `
@@ -24,7 +32,7 @@ router.post('/generate', (req, res) => {
         `;
         
         const stmt = db.prepare(query);
-        const list = stmt.all(...recipeIds) as any[];
+        const list = stmt.all(...validIds) as any[];
 
         // Group by category for easier shopping
         const shoppingList = list.reduce((acc, item) => {

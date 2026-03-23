@@ -28,8 +28,8 @@ export default function PlanScreen() {
             }
 
             // Fetch all recipes to map data
-            const response = await api.get('/recipes');
-            const allRecipes = response.data;
+            const response = await api.get('/recipes?limit=100');
+            const allRecipes = response.data.data ?? response.data;
             const recipeMap = new Map(allRecipes.map((r: any) => [r.id, r]));
 
             // Convert Record<date, { lunch, dinner }> into sections array

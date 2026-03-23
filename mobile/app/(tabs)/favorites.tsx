@@ -28,8 +28,8 @@ export default function FavoritesScreen() {
             }
 
             // Simple MVP implementation: fetch all recipes and filter local logic
-            const response = await api.get('/recipes');
-            const allRecipes = response.data;
+            const response = await api.get('/recipes?limit=100');
+            const allRecipes = response.data.data ?? response.data;
             const favRecipes = allRecipes.filter((r: any) => favIds.includes(r.id));
             setFavorites(favRecipes);
         } catch (error) {

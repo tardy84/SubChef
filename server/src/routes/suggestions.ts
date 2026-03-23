@@ -16,14 +16,29 @@ router.get('/filter', (req, res) => {
         let rawIngredients = (ingredients as string).split(',').map(i => i.trim().toLowerCase());
         const expandedIngredients = new Set<string>();
 
+        // Synonym groups: each group's members are interchangeable
+        const SYNONYM_GROUPS: string[][] = [
+            ['lợn', 'heo'],
+            ['đậu phụ', 'đậu hũ', 'tàu hũ'],
+            ['trứng', 'hột vịt', 'trứng gà', 'trứng vịt', 'trứng cút'],
+            ['bò', 'thịt bò'],
+            ['gà', 'thịt gà'],
+            ['tôm', 'tép'],
+            ['hành lá', 'hành xanh'],
+            ['hành tây', 'củ hành'],
+            ['cà rốt', 'củ cà rốt'],
+            ['khoai tây', 'củ khoai tây'],
+            ['nấm', 'nấm rơm', 'nấm đông cô', 'nấm hương'],
+            ['ớt', 'ớt đỏ', 'ớt xanh', 'ớt hiểm'],
+        ];
+
         rawIngredients.forEach(ing => {
             expandedIngredients.add(ing);
-            // Synonyms
-            if (ing.includes('lợn')) expandedIngredients.add(ing.replace('lợn', 'heo'));
-            if (ing.includes('heo')) expandedIngredients.add(ing.replace('heo', 'lợn'));
-            if (ing.includes('đậu phụ')) expandedIngredients.add(ing.replace('đậu phụ', 'đậu hũ'));
-            if (ing.includes('đậu hũ')) expandedIngredients.add(ing.replace('đậu hũ', 'đậu phụ'));
-            if (ing === 'trứng') { expandedIngredients.add('hột vịt'); expandedIngredients.add('trứng gà'); expandedIngredients.add('trứng vịt'); }
+            for (const group of SYNONYM_GROUPS) {
+                if (group.some(s => ing.includes(s))) {
+                    group.forEach(s => expandedIngredients.add(s));
+                }
+            }
         });
 
         const ingredientList = Array.from(expandedIngredients);
@@ -59,11 +74,18 @@ router.get('/filter', (req, res) => {
 router.post('/ai', async (req, res) => {
     try {
         const { ingredients } = req.body;
-        if (!ingredients || ingredients.length === 0) {
+        if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
             return res.json([]);
         }
 
-        const prompt = `Tôi có những nguyên liệu sau: ${ingredients.join(', ')}. Hãy gợi ý 3 món ăn gia đình Việt Nam ngon. Chỉ trả về một Array chứa các object JSON hợp lệ với 2 key là "name" (tên món) và "match_reason" (lý do tại sao hợp với nguyên liệu đang có). Không thêm bất kỳ text định dạng markdown hay text nào khác ngoài Array này.`;
+        if (!API_KEY) {
+            return res.status(500).json({ error: 'AI service not configured' });
+        }
+
+        // Limit ingredients to prevent excessive prompt size
+        const safeIngredients = ingredients.slice(0, 20).map((i: any) => String(i).slice(0, 50));
+
+        const prompt = `Tôi có những nguyên liệu sau: ${safeIngredients.join(', ')}. Hãy gợi ý 3 món ăn gia đình Việt Nam ngon. Chỉ trả về một Array chứa các object JSON hợp lệ với 2 key là "name" (tên món) và "match_reason" (lý do tại sao hợp với nguyên liệu đang có). Không thêm bất kỳ text định dạng markdown hay text nào khác ngoài Array này.`;
 
         const response = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
@@ -106,9 +128,12 @@ router.post('/ai', async (req, res) => {
 router.get('/meal-combo', (req, res) => {
     try {
         const { mains = 2, veggies = 1, maxTime, difficulty } = req.query;
-        const numMains = parseInt(mains as string, 10);
-        const numVeggies = parseInt(veggies as string, 10);
+        const numMains = Math.min(Math.max(parseInt(mains as string, 10) || 2, 1), 5);
+        const numVeggies = Math.min(Math.max(parseInt(veggies as string, 10) || 1, 0), 3);
         const maxTimeNum = maxTime ? parseInt(maxTime as string, 10) : null;
+        if (maxTimeNum !== null && (isNaN(maxTimeNum) || maxTimeNum <= 0)) {
+            return res.status(400).json({ error: 'maxTime must be a positive number' });
+        }
 
         let extraFilters = '';
         const filterParams: any[] = [];

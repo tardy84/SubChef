@@ -6,43 +6,42 @@ const router = Router();
 // Get all recipes, optionally filtered by ingredients (comma separated ids) or search query
 router.get('/', (req, res) => {
     try {
-        const { search, ingredients, main_ingredient, maxTime, difficulty } = req.query;
-        let query = `
-            SELECT r.*, c.name as category_name
-            FROM recipes r
-            LEFT JOIN categories c ON r.category_id = c.id
-            WHERE 1=1
-        `;
+        const { search, ingredients, main_ingredient, maxTime, difficulty, page, limit } = req.query;
+        const pageNum = Math.max(parseInt(page as string, 10) || 1, 1);
+        const limitNum = Math.min(Math.max(parseInt(limit as string, 10) || 20, 1), 100);
+        const offset = (pageNum - 1) * limitNum;
+
+        let baseWhere = `WHERE 1=1`;
         const params: any[] = [];
 
         if (search) {
-            query += ` AND r.name LIKE ?`;
+            baseWhere += ` AND r.name LIKE ?`;
             params.push(`%${search}%`);
         }
 
         if (main_ingredient) {
-            query += ` AND r.main_ingredient = ?`;
+            baseWhere += ` AND r.main_ingredient = ?`;
             params.push(main_ingredient);
         }
 
         if (maxTime) {
             const timeNum = parseInt(maxTime as string, 10);
-            if (!isNaN(timeNum)) {
-                query += ` AND (r.prep_time + r.cook_time) <= ?`;
+            if (!isNaN(timeNum) && timeNum > 0) {
+                baseWhere += ` AND (r.prep_time + r.cook_time) <= ?`;
                 params.push(timeNum);
             }
         }
 
         if (difficulty) {
-            query += ` AND r.difficulty = ?`;
+            baseWhere += ` AND r.difficulty = ?`;
             params.push(difficulty);
         }
 
         if (ingredients) {
-            const ingredientIds = (ingredients as string).split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+            const ingredientIds = (ingredients as string).split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id) && id > 0);
             if (ingredientIds.length > 0) {
                 const placeholders = ingredientIds.map(() => '?').join(',');
-                query += ` AND r.id IN (
+                baseWhere += ` AND r.id IN (
                     SELECT recipe_id FROM recipe_ingredients
                     WHERE ingredient_id IN (${placeholders})
                     GROUP BY recipe_id
@@ -52,8 +51,19 @@ router.get('/', (req, res) => {
             }
         }
 
+        const countQuery = `SELECT COUNT(*) as total FROM recipes r LEFT JOIN categories c ON r.category_id = c.id ${baseWhere}`;
+        const { total } = db.prepare(countQuery).get(...params) as any;
+
+        const query = `
+            SELECT r.*, c.name as category_name
+            FROM recipes r
+            LEFT JOIN categories c ON r.category_id = c.id
+            ${baseWhere}
+            ORDER BY r.id
+            LIMIT ? OFFSET ?
+        `;
         const stmt = db.prepare(query);
-        const recipes = stmt.all(...params);
+        const recipes = stmt.all(...params, limitNum, offset);
         
         // Parse instructions for each recipe
         const recipesParsed = recipes.map((r: any) => ({
@@ -61,7 +71,15 @@ router.get('/', (req, res) => {
             instructions: JSON.parse(r.instructions || '[]')
         }));
 
-        res.json(recipesParsed);
+        res.json({
+            data: recipesParsed,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum)
+            }
+        });
     } catch (error) {
         console.error('Error fetching recipes:', error);
         res.status(500).json({ error: 'Internal server error' });

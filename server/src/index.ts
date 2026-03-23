@@ -28,6 +28,17 @@ app.use('/api/suggestions', suggestionsRouter);
 app.use('/api/shopping', shoppingRouter);
 app.use('/api/ai', aiRouter);
 
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+// Global error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
   console.log(`Database initialized: ${db.name}`);

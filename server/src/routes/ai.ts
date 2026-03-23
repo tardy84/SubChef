@@ -11,13 +11,22 @@ const API_KEY = process.env.GEMINI_API_KEY;
 router.post('/generate-image', async (req, res) => {
     try {
         const { prompt, recipeId } = req.body;
-        
+
         if (!prompt || !recipeId) {
             return res.status(400).json({ error: 'Prompt and recipeId are required' });
         }
 
+        if (!API_KEY) {
+            return res.status(500).json({ error: 'AI service not configured' });
+        }
+
+        const outputDir = path.join(__dirname, '../../public/images/dishes');
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
+        }
+
         const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${API_KEY}`,
             {
                 contents: [
                     {
@@ -44,7 +53,7 @@ router.post('/generate-image', async (req, res) => {
         const buffer = Buffer.from(base64Data, 'base64');
         
         const fileName = `recipe_${recipeId}_${Date.now()}.jpeg`;
-        const filePath = path.join(__dirname, '../../public/images/dishes', fileName);
+        const filePath = path.join(outputDir, fileName);
         
         fs.writeFileSync(filePath, buffer);
         

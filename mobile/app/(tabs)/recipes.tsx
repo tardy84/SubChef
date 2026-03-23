@@ -39,7 +39,7 @@ export default function RecipesScreen() {
 
             const url = `/recipes?${params.toString()}`;
             const response = await api.get(url);
-            setRecipes(response.data);
+            setRecipes(response.data.data ?? response.data);
         } catch (error) {
             console.error('Error fetching recipes:', error);
         } finally {
