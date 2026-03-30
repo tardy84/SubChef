@@ -38,7 +38,7 @@ const recipesData = [
     {
         name: 'Thịt Kho Tàu',
         main_ingredient: 'Lợn',
-        image_url: '/public/images/dishes/thit_kho_tau.png',
+        image_url: '',
         description: 'Món thịt heo kho với nước dừa và trứng vịt, đậm đà lạ miệng, rất đưa cơm.',
         instructions: JSON.stringify([
             'Thịt heo rửa sạch, thái miếng vuông, ướp với hành tỏi băm, nước mắm, đường, tiêu trong 30 phút.',
@@ -61,7 +61,7 @@ const recipesData = [
     {
         name: 'Sườn Xào Chua Ngọt',
         main_ingredient: 'Lợn',
-        image_url: '/public/images/dishes/suon_xao_chua_ngot.png',
+        image_url: '',
         description: 'Miếng sườn thấm đẫm sốt chua ngọt bóng bẩy, đậm vị.',
         instructions: JSON.stringify([
             'Sườn chặt miếng, chần sơ nước sôi.',
@@ -121,7 +121,7 @@ const recipesData = [
     {
         name: 'Bò Xào Cần Tỏi',
         main_ingredient: 'Bò',
-        image_url: '/public/images/dishes/bo_luc_lac.png',
+        image_url: '',
         description: 'Thịt bò mềm ngọt xào cùng cần tây và tỏi thơm nức.',
         instructions: JSON.stringify([
             'Bò thái mỏng, ướp tỏi, dầu hào, tiêu.',
@@ -162,7 +162,7 @@ const recipesData = [
     {
         name: 'Bò Lúc Lắc',
         main_ingredient: 'Bò',
-        image_url: '/public/images/dishes/bo_luc_lac.png',
+        image_url: '',
         description: 'Thịt bò cắt khối vuông, cháy cạnh, ăn kèm khoai tây chiên.',
         instructions: JSON.stringify([
             'Bò cắt khối vuông, ướp tỏi và dầu hào.',
@@ -183,7 +183,7 @@ const recipesData = [
     {
         name: 'Gà Rang Gừng',
         main_ingredient: 'Gà',
-        image_url: '/public/images/dishes/ga_rang_gung.png',
+        image_url: '',
         description: 'Món ăn giữ ấm bụng, cực kỳ phổ biến trong cơm gia đình miền Bắc.',
         instructions: JSON.stringify([
             'Gà chặt miếng, ướp mắm, muối, đường.',
@@ -260,7 +260,7 @@ const recipesData = [
     {
         name: 'Canh Chua Cá Lóc',
         main_ingredient: 'Cá',
-        image_url: '/public/images/dishes/canh_chua.png',
+        image_url: '',
         description: 'Món canh giải nhiệt với đầy đủ bạc hà, đậu bắp, cà chua.',
         instructions: JSON.stringify([
             'Nấu nước me chua.',
@@ -299,7 +299,7 @@ const recipesData = [
     {
         name: 'Tôm Rim Mặn Ngọt',
         main_ingredient: 'Hải sản',
-        image_url: '/public/images/dishes/tom_rim_man_ngot.png',
+        image_url: '',
         description: 'Tôm cháy tỏi, vỏ giòn bóng bẩy vị mặn ngọt.',
         instructions: JSON.stringify([
             'Tôm làm sạch, để nguyên vỏ.',
@@ -358,7 +358,7 @@ const recipesData = [
     {
         name: 'Đậu Hũ Sốt Cà Chua',
         main_ingredient: 'Đậu hũ',
-        image_url: '/public/images/dishes/dau_hu_sot_ca_chua.png',
+        image_url: '',
         description: 'Món chay đơn giản nhưng vô cùng bắt cơm.',
         instructions: JSON.stringify([
             'Đậu hũ chiên vàng.',
@@ -377,7 +377,7 @@ const recipesData = [
     {
         name: 'Rau Muống Xào Tỏi',
         main_ingredient: 'Rau củ',
-        image_url: '/public/images/dishes/rau_muong_xao_toi.png',
+        image_url: '',
         description: 'Món rau quốc dân trong mỗi bữa cơm Việt.',
         instructions: JSON.stringify([
             'Rau muống chần sơ.',
@@ -435,7 +435,7 @@ const recipesData = [
     {
         name: 'Lẩu Riêu Cua Bắp Bò',
         main_ingredient: 'Hải sản',
-        image_url: '/public/images/dishes/lau_rieu_cua.png',
+        image_url: '',
         description: 'Món lẩu đặc trưng miền Bắc với gạch cua béo ngậy.',
         instructions: JSON.stringify([
             'Nấu nước riêu cua.',
@@ -473,7 +473,9 @@ const recipesData = [
 ];
 
 import { moreRecipes } from './moreRecipes';
+import { moreRecipes2 } from './moreRecipes2';
 recipesData.push(...moreRecipes);
+recipesData.push(...moreRecipes2);
 
 const runSeed = db.transaction(() => {
     // Insert categories and map them

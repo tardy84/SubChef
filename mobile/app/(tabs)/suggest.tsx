@@ -37,10 +37,7 @@ export default function SuggestionScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                    <Text style={styles.backButtonText}>← Trở về</Text>
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Gợi ý món ăn</Text>
+                <Text style={styles.headerTitle}>Có gì nấu nấy</Text>
                 <Text style={styles.headerSubtitle}>Nhập nguyên liệu bạn đang có (ngăn cách bằng dấu phẩy)</Text>
             </View>
 
@@ -114,14 +111,6 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
         elevation: 2,
         marginBottom: spacing.md,
-    },
-    backButton: {
-        marginBottom: spacing.sm,
-    },
-    backButtonText: {
-        color: colors.primary,
-        fontWeight: 'bold',
-        fontSize: 14,
     },
     headerTitle: {
         fontSize: 24,

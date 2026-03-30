@@ -1,0 +1,21 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Express API Server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3001,
+      "cwd": "server",
+      "autoPort": false
+    },
+    {
+      "name": "Expo Mobile App",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "port": 8081,
+      "cwd": "mobile",
+      "autoPort": false
+    }
+  ]
+}

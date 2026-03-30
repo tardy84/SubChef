@@ -2,6 +2,8 @@ import { db } from './src/db/database';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -26,7 +28,10 @@ async function generateMissingImages() {
                                 { text: prompt }
                             ]
                         }
-                    ]
+                    ],
+                    generationConfig: {
+                        responseModalities: ["IMAGE", "TEXT"]
+                    }
                 },
                 {
                     headers: { 'Content-Type': 'application/json' }
