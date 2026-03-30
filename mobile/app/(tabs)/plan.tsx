@@ -54,7 +54,10 @@ export default function PlanScreen() {
                     }
                     return res;
                 })
-                .sort((a, b) => a.title.localeCompare(b.title));
+                .sort((a, b) => {
+                    if (a.dateStr !== b.dateStr) return a.dateStr.localeCompare(b.dateStr);
+                    return a.mealType === 'lunch' ? -1 : 1;
+                });
 
             setSections(formattedSections);
         } catch (error) {

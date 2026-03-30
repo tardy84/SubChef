@@ -25,7 +25,10 @@ router.post('/generate-image', async (req, res) => {
                             { text: prompt }
                         ]
                     }
-                ]
+                ],
+                generationConfig: {
+                    responseModalities: ["IMAGE", "TEXT"]
+                }
             },
             {
                 headers: { 'Content-Type': 'application/json' }

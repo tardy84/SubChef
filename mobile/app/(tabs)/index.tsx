@@ -1,41 +1,122 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
 import { colors } from '@/src/theme/colors';
 import { spacing, borderRadius } from '@/src/theme/spacing';
 import { useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import api, { getImageUrl } from '@/src/services/api';
+import { storage } from '@/src/services/storage';
 
 export default function HomeScreen() {
     const router = useRouter();
-    const [mealCombo, setMealCombo] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [lunchCombo, setLunchCombo] = useState<any[]>([]);
+    const [dinnerCombo, setDinnerCombo] = useState<any[]>([]);
+    const [loadingLunch, setLoadingLunch] = useState(true);
+    const [loadingDinner, setLoadingDinner] = useState(true);
 
     const [numMains, setNumMains] = useState(2);
     const [numVeggies, setNumVeggies] = useState(1);
     const [maxTime, setMaxTime] = useState<number | null>(null);
     const [difficulty, setDifficulty] = useState<string | null>(null);
+    const [selectedLunch, setSelectedLunch] = useState<Set<number>>(new Set());
+    const [selectedDinner, setSelectedDinner] = useState<Set<number>>(new Set());
 
     useEffect(() => {
-        fetchMealCombo();
+        fetchLunch();
+        fetchDinner();
     }, [numMains, numVeggies, maxTime, difficulty]);
 
-    const fetchMealCombo = async () => {
-        setLoading(true);
-        try {
-            const params = new URLSearchParams({
-                mains: numMains.toString(),
-                veggies: numVeggies.toString(),
-            });
-            if (maxTime) params.append('maxTime', maxTime.toString());
-            if (difficulty) params.append('difficulty', difficulty);
+    const buildParams = () => {
+        const params = new URLSearchParams({
+            mains: numMains.toString(),
+            veggies: numVeggies.toString(),
+        });
+        if (maxTime) params.append('maxTime', maxTime.toString());
+        if (difficulty) params.append('difficulty', difficulty);
+        return params;
+    };
 
-            const response = await api.get(`/suggestions/meal-combo?${params.toString()}`);
-            setMealCombo(response.data);
+    const fetchLunch = async () => {
+        setLoadingLunch(true);
+        try {
+            const response = await api.get(`/suggestions/meal-combo?${buildParams().toString()}`);
+            setLunchCombo(response.data);
         } catch (error) {
-            console.error('Error fetching meal combo:', error);
+            console.error('Error fetching lunch combo:', error);
         } finally {
-            setLoading(false);
+            setLoadingLunch(false);
         }
+    };
+
+    const fetchDinner = async () => {
+        setLoadingDinner(true);
+        try {
+            const response = await api.get(`/suggestions/meal-combo?${buildParams().toString()}`);
+            setDinnerCombo(response.data);
+        } catch (error) {
+            console.error('Error fetching dinner combo:', error);
+        } finally {
+            setLoadingDinner(false);
+        }
+    };
+
+    const toggleSelect = (id: number, meal: 'lunch' | 'dinner') => {
+        const setter = meal === 'lunch' ? setSelectedLunch : setSelectedDinner;
+        setter(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+
+    const totalSelected = selectedLunch.size + selectedDinner.size;
+
+    const addToShoppingList = async () => {
+        if (totalSelected === 0) return;
+        const today = new Date().toISOString().split('T')[0];
+        for (const id of selectedLunch) await storage.addToMealPlan(today, 'lunch', id);
+        for (const id of selectedDinner) await storage.addToMealPlan(today, 'dinner', id);
+        Alert.alert('Đã thêm!', `${totalSelected} món đã được thêm vào danh sách đi chợ.`, [
+            { text: 'Đi chợ ngay', onPress: () => router.push('/list') },
+            { text: 'OK' }
+        ]);
+        setSelectedLunch(new Set());
+        setSelectedDinner(new Set());
+    };
+
+    const renderComboCard = (item: any, meal: 'lunch' | 'dinner') => {
+        const isSelected = meal === 'lunch' ? selectedLunch.has(item.id) : selectedDinner.has(item.id);
+        return (
+            <TouchableOpacity
+                key={`${meal}-${item.id}`}
+                style={styles.comboCell}
+                onPress={() => router.push(`/recipe/${item.id}`)}
+            >
+                <View style={[styles.comboCard, isSelected && styles.comboCardSelected]}>
+                    {item.image_url ? (
+                        <Image source={{ uri: getImageUrl(item.image_url) }} style={styles.comboImage} />
+                    ) : (
+                        <View style={styles.emojiFallback}>
+                            <Text style={styles.comboEmoji}>
+                                {item.category_name === 'Canh' ? '🥣' :
+                                 item.category_name === 'Xào' ? '🍳' :
+                                 item.category_name === 'Kho' ? '🍲' :
+                                 item.category_name === 'Luộc' ? '🥬' :
+                                 item.category_name === 'Chiên/Rán' ? '🍤' : '🥘'}
+                            </Text>
+                        </View>
+                    )}
+                    <View style={styles.comboInfo}>
+                        <Text style={styles.comboType}>{item.category_name}</Text>
+                        <Text style={styles.comboName} numberOfLines={2}>{item.name}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.checkboxOverlay} onPress={() => toggleSelect(item.id, meal)}>
+                        <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+                            {isSelected && <Text style={styles.checkMark}>✓</Text>}
+                        </View>
+                    </TouchableOpacity>
+                </View>
+            </TouchableOpacity>
+        );
     };
 
     return (
@@ -82,81 +163,71 @@ export default function HomeScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Meal Suggestion Section */}
+            {/* Filters */}
             <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleRow}>
                     <Text style={styles.sectionTitle}>Mâm cơm gợi ý</Text>
-                    <TouchableOpacity onPress={fetchMealCombo}>
-                        <Text style={styles.refreshBtn}>Đổi món 🔄</Text>
-                    </TouchableOpacity>
                 </View>
                 <Text style={styles.sectionSubtitle}>Gợi ý bữa cơm cân bằng cho gia đình</Text>
-                
                 <View style={styles.filtersContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                        {/* Num Mains */}
                         <TouchableOpacity style={styles.filterGroup} onPress={() => setNumMains(numMains === 3 ? 1 : numMains + 1)}>
                             <Text style={styles.filterText}>🥩 Mặn: {numMains}</Text>
                         </TouchableOpacity>
-
-                        {/* Num Veggies */}
                         <TouchableOpacity style={styles.filterGroup} onPress={() => setNumVeggies(numVeggies === 2 ? 0 : numVeggies + 1)}>
                             <Text style={styles.filterText}>🥬 Rau: {numVeggies}</Text>
                         </TouchableOpacity>
-
-                        {/* Max Time */}
                         <TouchableOpacity style={styles.filterGroup} onPress={() => setMaxTime(maxTime === null ? 30 : maxTime === 30 ? 60 : null)}>
                             <Text style={styles.filterText}>⏱ {maxTime ? `<${maxTime}p` : 'Bất kỳ'}</Text>
                         </TouchableOpacity>
-
-                        {/* Difficulty */}
                         <TouchableOpacity style={styles.filterGroup} onPress={() => setDifficulty(difficulty === null ? 'Dễ' : difficulty === 'Dễ' ? 'Vừa' : difficulty === 'Vừa' ? 'Khó' : null)}>
                             <Text style={styles.filterText}>⚡ {difficulty || 'Bất kỳ'}</Text>
                         </TouchableOpacity>
                     </ScrollView>
                 </View>
             </View>
-            
-            <View style={styles.comboContainer}>
-                {loading ? (
-                    <ActivityIndicator color={colors.primary} />
-                ) : mealCombo.length > 0 ? (
-                    <View style={styles.gridContainer}>
-                        {mealCombo.map((item) => (
-                            <TouchableOpacity 
-                                key={item.id} 
-                                style={styles.comboCell}
-                                onPress={() => router.push(`/recipe/${item.id}`)}
-                            >
-                                <View style={styles.comboCard}>
-                                    {item.image_url ? (
-                                        <Image 
-                                            source={{ uri: getImageUrl(item.image_url) }} 
-                                            style={styles.comboImage} 
-                                        />
-                                    ) : (
-                                        <View style={styles.emojiFallback}>
-                                            <Text style={styles.comboEmoji}>
-                                                {item.category_name === 'Canh' ? '🥣' : 
-                                                 item.category_name === 'Xào' ? '🍳' : 
-                                                 item.category_name === 'Kho' ? '🍲' :
-                                                 item.category_name === 'Luộc' ? '🥬' :
-                                                 item.category_name === 'Chiên/Rán' ? '🍤' : '🥘'}
-                                            </Text>
-                                        </View>
-                                    )}
-                                    <View style={styles.comboInfo}>
-                                        <Text style={styles.comboType}>{item.category_name}</Text>
-                                        <Text style={styles.comboName} numberOfLines={2}>{item.name}</Text>
-                                    </View>
-                                </View>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+
+            {/* Lunch Section */}
+            <View style={styles.mealSection}>
+                <View style={styles.mealSectionHeader}>
+                    <Text style={styles.mealSectionTitle}>☀️ Bữa trưa</Text>
+                    <TouchableOpacity onPress={fetchLunch}>
+                        <Text style={styles.refreshBtn}>Đổi món 🔄</Text>
+                    </TouchableOpacity>
+                </View>
+                {loadingLunch ? (
+                    <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />
                 ) : (
-                    <Text style={styles.emptyText}>Không tìm thấy gợi ý.</Text>
+                    <View style={styles.gridContainer}>
+                        {lunchCombo.map((item) => renderComboCard(item, 'lunch'))}
+                    </View>
                 )}
             </View>
+
+            {/* Dinner Section */}
+            <View style={styles.mealSection}>
+                <View style={styles.mealSectionHeader}>
+                    <Text style={styles.mealSectionTitle}>🌙 Bữa tối</Text>
+                    <TouchableOpacity onPress={fetchDinner}>
+                        <Text style={styles.refreshBtn}>Đổi món 🔄</Text>
+                    </TouchableOpacity>
+                </View>
+                {loadingDinner ? (
+                    <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />
+                ) : (
+                    <View style={styles.gridContainer}>
+                        {dinnerCombo.map((item) => renderComboCard(item, 'dinner'))}
+                    </View>
+                )}
+            </View>
+
+            {totalSelected > 0 && (
+                <View style={styles.comboContainer}>
+                    <TouchableOpacity style={styles.addToCartBtn} onPress={addToShoppingList}>
+                        <Text style={styles.addToCartText}>🛒 Thêm {totalSelected} món vào giỏ đi chợ</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <View style={styles.paddingBottom} />
         </ScrollView>
@@ -275,6 +346,21 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: colors.text,
     },
+    mealSection: {
+        paddingHorizontal: spacing.lg,
+        marginBottom: spacing.lg,
+    },
+    mealSectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.sm,
+    },
+    mealSectionTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: colors.text,
+    },
     comboContainer: {
         paddingHorizontal: spacing.lg,
         marginBottom: spacing.xl,
@@ -330,6 +416,46 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: colors.text,
         lineHeight: 18,
+    },
+    comboCardSelected: {
+        borderWidth: 2,
+        borderColor: colors.primary,
+    },
+    checkboxOverlay: {
+        position: 'absolute',
+        top: spacing.xs,
+        right: spacing.xs,
+    },
+    checkbox: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
+        borderColor: colors.grey300,
+        backgroundColor: colors.white,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
+    },
+    checkMark: {
+        color: colors.white,
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    addToCartBtn: {
+        backgroundColor: colors.primary,
+        borderRadius: borderRadius.md,
+        paddingVertical: spacing.md,
+        alignItems: 'center',
+        marginTop: spacing.md,
+    },
+    addToCartText: {
+        color: colors.white,
+        fontWeight: 'bold',
+        fontSize: 16,
     },
     emptyText: {
         textAlign: 'center',

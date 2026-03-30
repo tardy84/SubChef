@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, ScrollView, Image } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, ScrollView, Image, Alert } from 'react-native';
 import { colors } from '@/src/theme/colors';
 import { spacing, borderRadius } from '@/src/theme/spacing';
 import { useRouter } from 'expo-router';
 import api, { getImageUrl } from '@/src/services/api';
+import { storage } from '@/src/services/storage';
 
 const INGREDIENT_TYPES = [
     { label: 'Tất cả', value: '' },
@@ -24,6 +25,7 @@ export default function RecipesScreen() {
     const [selectedCategory, setSelectedCategory] = useState('');
     const [maxTime, setMaxTime] = useState<number | null>(null);
     const [difficulty, setDifficulty] = useState<string | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
     useEffect(() => {
         fetchRecipes();
@@ -47,6 +49,27 @@ export default function RecipesScreen() {
         }
     };
 
+    const toggleSelect = (id: number) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+
+    const addToShoppingList = async () => {
+        if (selectedIds.size === 0) return;
+        const today = new Date().toISOString().split('T')[0];
+        for (const id of selectedIds) {
+            await storage.addToMealPlan(today, 'lunch', id);
+        }
+        Alert.alert('Đã thêm!', `${selectedIds.size} món đã được thêm vào danh sách đi chợ.`, [
+            { text: 'Đi chợ ngay', onPress: () => router.push('/list') },
+            { text: 'OK' }
+        ]);
+        setSelectedIds(new Set());
+    };
+
     const handleGenerateImage = async (item: any) => {
         try {
             setGeneratingImageId(item.id);
@@ -64,58 +87,72 @@ export default function RecipesScreen() {
         }
     };
 
-    const renderRecipe = ({ item }: { item: any }) => (
-        <TouchableOpacity 
-            style={styles.recipeCard}
-            onPress={() => router.push(`/recipe/${item.id}`)}
-        >
-            <View style={styles.cardCover}>
-                {item.image_url ? (
-                    <>
-                        <Image 
-                            source={{ uri: getImageUrl(item.image_url) }} 
-                            style={styles.cardImage} 
-                        />
-                        <TouchableOpacity 
-                            style={styles.regenerateBtn} 
+    const renderRecipe = ({ item }: { item: any }) => {
+        const isSelected = selectedIds.has(item.id);
+        return (
+            <TouchableOpacity
+                style={[styles.recipeCard, isSelected && styles.recipeCardSelected]}
+                onPress={() => router.push(`/recipe/${item.id}`)}
+            >
+                <View style={styles.cardCover}>
+                    {item.image_url ? (
+                        <>
+                            <Image
+                                source={{ uri: getImageUrl(item.image_url) }}
+                                style={styles.cardImage}
+                            />
+                            <TouchableOpacity
+                                style={styles.regenerateBtn}
+                                disabled={generatingImageId === item.id}
+                                onPress={(e) => {
+                                    e.stopPropagation();
+                                    handleGenerateImage(item);
+                                }}
+                            >
+                                <Text style={styles.regenerateBtnIcon}>🔄</Text>
+                            </TouchableOpacity>
+                        </>
+                    ) : (
+                        <TouchableOpacity
+                            style={styles.generateBtn}
                             disabled={generatingImageId === item.id}
                             onPress={(e) => {
                                 e.stopPropagation();
                                 handleGenerateImage(item);
                             }}
                         >
-                            <Text style={styles.regenerateBtnIcon}>🔄</Text>
+                            <Text style={styles.generateBtnIcon}>🍌</Text>
+                            <Text style={styles.generateBtnText}>Tạo ảnh AI</Text>
                         </TouchableOpacity>
-                    </>
-                ) : (
-                    <TouchableOpacity 
-                        style={styles.generateBtn} 
-                        disabled={generatingImageId === item.id}
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            handleGenerateImage(item);
-                        }}
-                    >
-                        <Text style={styles.generateBtnIcon}>🍌</Text>
-                        <Text style={styles.generateBtnText}>Tạo ảnh AI</Text>
-                    </TouchableOpacity>
-                )}
-                {generatingImageId === item.id && (
-                    <View style={styles.loadingOverlay}>
-                        <ActivityIndicator size="small" color={colors.primary} />
-                    </View>
-                )}
-            </View>
-            <View style={styles.cardContent}>
-                <Text style={styles.recipeName}>{item.name}</Text>
-                <Text style={styles.recipeDesc} numberOfLines={2}>{item.description}</Text>
-                <View style={styles.metaContainer}>
-                    <Text style={styles.metaText}>⏱ {item.prep_time + item.cook_time} phút</Text>
-                    <Text style={[styles.metaText, { color: colors.primary }]}>{item.main_ingredient}</Text>
+                    )}
+                    {generatingImageId === item.id && (
+                        <View style={styles.loadingOverlay}>
+                            <ActivityIndicator size="small" color={colors.primary} />
+                        </View>
+                    )}
                 </View>
-            </View>
-        </TouchableOpacity>
-    );
+                <View style={styles.cardContent}>
+                    <Text style={styles.recipeName}>{item.name}</Text>
+                    <Text style={styles.recipeDesc} numberOfLines={2}>{item.description}</Text>
+                    <View style={styles.metaContainer}>
+                        <Text style={styles.metaText}>⏱ {item.prep_time + item.cook_time} phút</Text>
+                        <Text style={[styles.metaText, { color: colors.primary }]}>{item.main_ingredient}</Text>
+                    </View>
+                </View>
+                <TouchableOpacity
+                    style={styles.checkboxContainer}
+                    onPress={(e) => {
+                        e.stopPropagation();
+                        toggleSelect(item.id);
+                    }}
+                >
+                    <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+                        {isSelected && <Text style={styles.checkMark}>✓</Text>}
+                    </View>
+                </TouchableOpacity>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -173,6 +210,11 @@ export default function RecipesScreen() {
                 </ScrollView>
             </View>
 
+            {selectedIds.size > 0 && (
+                <TouchableOpacity style={styles.addToCartBtn} onPress={addToShoppingList}>
+                    <Text style={styles.addToCartText}>🛒 Thêm {selectedIds.size} món vào giỏ đi chợ</Text>
+                </TouchableOpacity>
+            )}
             {loading ? (
                 <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
             ) : recipes.length === 0 ? (
@@ -342,5 +384,45 @@ const styles = StyleSheet.create({
         color: colors.textLight,
         fontSize: 16,
         textAlign: 'center',
-    }
+    },
+    recipeCardSelected: {
+        borderWidth: 2,
+        borderColor: colors.primary,
+    },
+    checkboxContainer: {
+        justifyContent: 'center',
+        paddingHorizontal: spacing.md,
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: colors.grey300,
+        backgroundColor: colors.white,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
+    },
+    checkMark: {
+        color: colors.white,
+        fontSize: 13,
+        fontWeight: 'bold',
+    },
+    addToCartBtn: {
+        backgroundColor: colors.primary,
+        marginHorizontal: spacing.md,
+        marginBottom: spacing.sm,
+        borderRadius: borderRadius.md,
+        paddingVertical: spacing.md,
+        alignItems: 'center',
+    },
+    addToCartText: {
+        color: colors.white,
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
 });
